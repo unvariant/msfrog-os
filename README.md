@@ -19,7 +19,9 @@ This is required to provide `qemu` a UEFI compatible bios for emulation.
 - To build locally run `zig build`.
   - This will create the UEFI PE executable in `zig-out/bin/BOOTX64.EFI`.
 - To deploy using qemu run `zig build run`.
+  - Must run `zig build` first to create the executable.
 - To create a disk image run `make disk`.
+  - Must run `zig build` first to create the executable.
 - To deploy using the created disk image run `make run`.
 - To populate the `src/frames` directory copy the target video into the project root
 and rename it to `rick-roll-video`. Run `make frames` to extract the first 33 seconds of
