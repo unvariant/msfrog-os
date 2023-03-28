@@ -17,20 +17,25 @@ pub var stdin: *Stdin = undefined;
 pub var columns: usize = undefined;
 pub var rows: usize = undefined;
 
+// The console output protocol interprets \n as a command to move the cursor down
+// without returning to column zero.
+// \r is interpreted as a command to move the cursor to column zero, without affecting the row.
+// In order to move down and reset the line \n\r or \r\n is required.
+
 pub fn init() void {
     if (uefi.system_table.con_out) |con_out| {
         stdout = con_out;
         _ = stdout.queryMode(stdout.mode.mode, &columns, &rows);
     } else {
-        write8("failed to initialize stdout\r\n");
         arch.hang();
     }
 
     if (uefi.system_table.con_in) |con_in| {
         stdin = con_in;
     } else {
-        printf("failed to initialize stdin\r\n", .{});
-        arch.hang();
+        // can print an error here because stdout is
+        // guaranteed to be initialized already
+        @panic("failed to initialize stdin");
     }
 
     _ = stdout.reset(false);
@@ -46,28 +51,30 @@ pub fn waitForKey() InputKey {
     return key;
 }
 
-pub fn getline (prompt: []const u8, buffer: []u8) usize {
-    printf("{s}", .{ prompt });
+pub fn getline(prompt: []const u8, buffer: []u8) usize {
     var offset: usize = 0;
-    while (true) {
-        const key = @truncate(u8, waitForKey().unicode_char);
-        switch (key) {
-            0x0A, 0x0D => break,
-            0x08 => if (offset > 0) {
-                printf("{c}", .{ key });
-                offset -= 1;
-            },
-            else => {
-                printf("{c}", .{ key });
-                buffer[offset] = key;
-                offset += 1;
-            },
+
+    finished: while (true) {
+        printf("{s}", .{prompt});
+
+        while (offset < buffer.len) {
+            const key = @truncate(u8, waitForKey().unicode_char);
+            switch (key) {
+                0x0A, 0x0D => break :finished,
+                0x08 => if (offset > 0) {
+                    printf("{c}", .{key});
+                    offset -= 1;
+                },
+                else => {
+                    printf("{c}", .{key});
+                    buffer[offset] = key;
+                    offset += 1;
+                },
+            }
         }
 
-        if (offset >= buffer.len) {
-            printf("input too long.\r\nmax input length is {} characters.\r\nplease re-enter input.\r\n", .{ buffer.len });
-            offset = 0;
-        }
+        printf("\r\ninput too long.\r\nmax input length is {} characters.\r\nplease re-enter input. YARRR\r\n", .{buffer.len});
+        offset = 0;
     }
     printf("\r\n", .{});
     return offset;
@@ -84,18 +91,11 @@ pub fn printf(comptime format: []const u8, args: anytype) void {
     writer.print(format, args) catch unreachable;
 }
 
-pub fn write16(string: []const u16) void {
-    var buf = [_:0]u16{0} ** 17;
-    var base: usize = 0;
-
-    while (base < string.len) {
-        const slice_len = math.min(16, string.len - base);
-        mem.copy(u16, buf, string[base .. base + slice_len]);
-        _ = stdout.outputString(&buf);
-    }
-}
-
 pub fn write8(string: []const u8) void {
+    // Converts u8 str to u16 str in fixed size blocks
+    // to avoid dynamic allocation.
+    // This is required because the UEFI output protocol
+    // expects u16 strs.
     var buf = [_:0]u16{0} ** 17;
     var base: usize = 0;
 

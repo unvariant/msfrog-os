@@ -6,14 +6,8 @@ const CrossTarget = std.zig.CrossTarget;
 
 const features = Target.x86.Feature;
 
-const cp_cmd_str = [_][] const u8 { "cp", "zig-out/bin/BOOTX64.efi", "uefi/shared/EFI/BOOT/BOOTX64.EFI" };
-const run_cmd_str = [_][] const u8
-    { "qemu-system-x86_64"
-    , "--bios", "uefi/debug/OVMF.fd"
-    , "-L", "uefi/debug"
-    , "-drive", "file=fat:rw:uefi/shared,format=raw"
-    , "-net", "none"
-    , "-debugcon", "file:uefi/debug.log", "-global", "isa-debugcon.iobase=0x402" };
+const cp_cmd_str = [_][]const u8{ "cp", "zig-out/bin/BOOTX64.efi", "uefi/shared/EFI/BOOT/BOOTX64.EFI" };
+const run_cmd_str = [_][]const u8{ "qemu-system-x86_64", "--bios", "uefi/debug/OVMF.fd", "-L", "uefi/debug", "-drive", "file=fat:rw:uefi/shared,format=raw", "-net", "none", "-debugcon", "file:uefi/debug.log", "-global", "isa-debugcon.iobase=0x402" };
 
 pub fn build(b: *std.Build) void {
     var disabled_features = Feature.Set.empty;
@@ -56,19 +50,8 @@ pub fn build(b: *std.Build) void {
     exe.linkLibrary(stub);
     exe.install();
 
-    const cp_cmd = b.addSystemCommand(&[_][] const u8
-    { "cp"
-    , "zig-out/bin/BOOTX64.efi"
-    , "uefi/shared/EFI/BOOT/BOOTX64.EFI"
-    });
-    const run_cmd = b.addSystemCommand(&[_][] const u8
-    { "qemu-system-x86_64"
-    , "--bios", "uefi/OVMF.fd"
-    , "-L", "uefi/debug"
-    , "-drive", "file=fat:rw:uefi/shared,format=raw"
-    , "-net", "none"
-    , "-debugcon", "file:uefi/debug.log", "-global", "isa-debugcon.iobase=0x402"
-    });
+    const cp_cmd = b.addSystemCommand(&[_][]const u8{ "cp", "zig-out/bin/BOOTX64.efi", "uefi/shared/EFI/BOOT/BOOTX64.EFI" });
+    const run_cmd = b.addSystemCommand(&[_][]const u8{ "qemu-system-x86_64", "--bios", "uefi/OVMF.fd", "-L", "uefi/debug", "-drive", "file=fat:rw:uefi/shared,format=raw", "-net", "none", "-debugcon", "file:uefi/debug.log", "-global", "isa-debugcon.iobase=0x402" });
     const run_step = b.step("run", "run msfrog run");
 
     run_step.dependOn(&exe.step);
