@@ -15,7 +15,7 @@ frames:
 run:
 	qemu-system-x86_64 --bios uefi/OVMF.fd -cdrom uefi/boot.iso
 
-zip: disk
+zip: dist
 	cp uefi/OVMF.fd dist
 	cp uefi/boot.iso dist
 	cd dist; zip dist.zip OVMF.fd boot.iso run.sh
