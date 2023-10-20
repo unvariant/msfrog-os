@@ -4,7 +4,6 @@ zig/
 
 **/*.DS_Store
 
-uefi/OVMF.fd
 uefi/debug.log
 uefi/iso/
 uefi/boot.iso
