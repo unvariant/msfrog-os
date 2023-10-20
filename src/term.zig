@@ -46,7 +46,7 @@ pub fn init() void {
 pub fn waitForKey() InputKey {
     var idx: usize = undefined;
     var key: InputKey = undefined;
-    _ = uefi.system_table.boot_services.?.waitForEvent(1, @ptrCast([*]const uefi.Event, &stdin.wait_for_key), &idx);
+    _ = uefi.system_table.boot_services.?.waitForEvent(1, @as([*]const uefi.Event, @ptrCast(&stdin.wait_for_key)), &idx);
     _ = stdin.readKeyStroke(&key);
     return key;
 }
@@ -58,7 +58,7 @@ pub fn getline(prompt: []const u8, buffer: []u8) usize {
         printf("{s}", .{prompt});
 
         while (offset < buffer.len) {
-            const key = @truncate(u8, waitForKey().unicode_char);
+            const key = @as(u8, @truncate(waitForKey().unicode_char));
             switch (key) {
                 0x0A, 0x0D => break :finished,
                 0x08 => if (offset > 0) {
@@ -100,9 +100,9 @@ pub fn write8(string: []const u8) void {
     var base: usize = 0;
 
     while (base < string.len) {
-        const len = math.min(16, string.len - base);
+        const len = @min(16, string.len - base);
         for (0..len) |i| {
-            buf[i] = @intCast(u16, string[base + i]);
+            buf[i] = @as(u16, @intCast(string[base + i]));
         }
         buf[len] = 0;
         _ = stdout.outputString(&buf);

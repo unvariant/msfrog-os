@@ -7,18 +7,30 @@ const CrossTarget = std.zig.CrossTarget;
 const features = Target.x86.Feature;
 
 const cp_cmd_str = [_][]const u8{ "cp", "zig-out/bin/BOOTX64.efi", "uefi/shared/EFI/BOOT/BOOTX64.EFI" };
-const run_cmd_str = [_][]const u8{ "qemu-system-x86_64", "--bios", "uefi/debug/OVMF.fd", "-L", "uefi/debug", "-drive", "file=fat:rw:uefi/shared,format=raw", "-net", "none", "-debugcon", "file:uefi/debug.log", "-global", "isa-debugcon.iobase=0x402" };
+const run_cmd_str = [_][]const u8{
+    "qemu-system-x86_64",
+    "-bios",
+    "uefi/OVMF.fd",
+    "-L",
+    "uefi/debug",
+    "-drive",
+    "file=fat:rw:uefi/shared,format=raw",
+    "-netdev",
+    "user,id=mynet0",
+    "-device",
+    "rtl8139,netdev=mynet0",
+};
 
 pub fn build(b: *std.Build) void {
     var disabled_features = Feature.Set.empty;
     var enabled_features = Feature.Set.empty;
 
-    disabled_features.addFeature(@enumToInt(features.mmx));
-    disabled_features.addFeature(@enumToInt(features.sse));
-    disabled_features.addFeature(@enumToInt(features.sse2));
-    disabled_features.addFeature(@enumToInt(features.avx));
-    disabled_features.addFeature(@enumToInt(features.avx2));
-    enabled_features.addFeature(@enumToInt(features.soft_float));
+    disabled_features.addFeature(@intFromEnum(features.mmx));
+    disabled_features.addFeature(@intFromEnum(features.sse));
+    disabled_features.addFeature(@intFromEnum(features.sse2));
+    disabled_features.addFeature(@intFromEnum(features.avx));
+    disabled_features.addFeature(@intFromEnum(features.avx2));
+    enabled_features.addFeature(@intFromEnum(features.soft_float));
 
     const target = CrossTarget{
         .cpu_arch = Target.Cpu.Arch.x86_64,
@@ -36,7 +48,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    stub.install();
+    b.installArtifact(stub);
 
     const exe = b.addExecutable(.{
         .name = "BOOTX64",
@@ -48,10 +60,10 @@ pub fn build(b: *std.Build) void {
     });
     exe.step.dependOn(&stub.step);
     exe.linkLibrary(stub);
-    exe.install();
+    b.installArtifact(exe);
 
-    const cp_cmd = b.addSystemCommand(&[_][]const u8{ "cp", "zig-out/bin/BOOTX64.efi", "uefi/shared/EFI/BOOT/BOOTX64.EFI" });
-    const run_cmd = b.addSystemCommand(&[_][]const u8{ "qemu-system-x86_64", "--bios", "uefi/OVMF.fd", "-L", "uefi/debug", "-drive", "file=fat:rw:uefi/shared,format=raw", "-net", "none", "-debugcon", "file:uefi/debug.log", "-global", "isa-debugcon.iobase=0x402" });
+    const cp_cmd = b.addSystemCommand(&cp_cmd_str);
+    const run_cmd = b.addSystemCommand(&run_cmd_str);
     const run_step = b.step("run", "run msfrog run");
 
     run_step.dependOn(&exe.step);
